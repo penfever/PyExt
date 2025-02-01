@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2015 Ryan Gonzalez
+Copyright (C) 2015 Ryan Gonzalez, tweaked 2025 Benjamin Feuer
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 g_backup = globals().copy()
 
-__version__ = '0.8'
+__version__ = '0.81'
 
 __all__ = ['overload', 'RuntimeModule', 'switch', 'tail_recurse', 'copyfunc',
            'set_docstring', 'annotate', 'safe_unpack', 'modify_function',
@@ -115,12 +115,30 @@ else:
 def _gettypes(args):
     return tuple(map(type, args))
 
-oargspec = inspect.getargspec
+def get_function_args(func):
+    """Helper function to get function arguments using either old or new inspect API"""
+    try:
+        # Try newer Python API first 
+        return inspect.signature(func).parameters
+    except (AttributeError, ValueError):
+        try:
+            # Fall back to getfullargspec (Python 3.0+)
+            return inspect.getfullargspec(func)
+        except AttributeError:
+            # Fall back to getargspec (Python 2)
+            return inspect.getargspec(func)
+
+oargspec = get_function_args
 
 def _argspec(func):
     return _targspec(func, oargspec)
 
-inspect.getargspec = _argspec
+# Try to monkey patch inspect safely
+try:
+    inspect.getargspec = _argspec
+except (AttributeError, TypeError):
+    # If we can't modify inspect, at least provide the functionality locally
+    pass
 
 try:
     import IPython
